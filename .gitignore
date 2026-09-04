@@ -18,6 +18,7 @@ data/*.csv
 models/chemeleon_mp.pt
 models/*_embeddings.npy
 
-# run outputs
+# run outputs (the checked-in reference table is kept)
 benchmark*.csv
+!results/benchmark_reference.csv
 scores*.csv
