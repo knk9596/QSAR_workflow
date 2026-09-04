@@ -59,3 +59,20 @@ def test_score_smiles_is_sorted_and_annotated(tmp_path, smiles, activity):
     assert list(frame.columns) == ["smiles", "prob_active", "nn_tanimoto", "ad_tier"]
     assert frame.prob_active.is_monotonic_decreasing
     assert (frame.ad_tier == "in_domain").all()
+
+
+def test_single_class_training_is_rejected(smiles, activity):
+    """A one-class fit succeeds silently but breaks at scoring time."""
+    all_inactive = np.full(len(smiles), 90.0)
+    with pytest.raises(ValueError, match="need both classes"):
+        train(smiles, all_inactive)
+    all_active = np.full(len(smiles), 10.0)
+    with pytest.raises(ValueError, match="need both classes"):
+        train(smiles, all_active)
+
+
+def test_threshold_shifts_the_label_boundary(smiles, activity):
+    strict = train(smiles, activity, threshold=50.0)
+    relaxed = train(smiles, activity, threshold=70.0)
+    assert strict.metrics["n_active"] < relaxed.metrics["n_active"]
+    assert strict.metrics["activity_threshold"] == 50.0

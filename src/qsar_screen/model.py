@@ -99,8 +99,17 @@ def ad_tier(nn: float) -> str:
 
 def train(smiles, activity_remaining, threshold: float = ACTIVITY_THRESHOLD,
           kind: str = "rf") -> Scorer:
-    """Fit a scorer on the full dataset."""
+    """Fit a scorer on the full dataset.
+
+    Raises if either class is empty: a single-class fit trains without error but
+    yields a one-column ``predict_proba``, which fails only later at scoring time.
+    """
     y = (np.asarray(activity_remaining, dtype=float) < threshold).astype(int)
+    n_active = int(y.sum())
+    if n_active == 0 or n_active == len(y):
+        raise ValueError(
+            f"need both classes to train: {n_active}/{len(y)} molecules are active "
+            f"at threshold {threshold}. Adjust the threshold or use more data.")
     X, _ = rdkit_descriptors(smiles, DESCRIPTOR_NAMES)
     pipe = build_pipeline(kind, binary_features=False,
                           n_pos=int(y.sum()), n_neg=int((1 - y).sum()))

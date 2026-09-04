@@ -13,8 +13,11 @@ venv/
 data/raw/
 data/*.csv
 !data/example/*.csv
-*.ckpt.json
 
-# screening outputs
-hits*.csv
+# third-party model weights: download, do not vendor (35 MB, Zenodo 15460715)
+models/chemeleon_mp.pt
+models/*_embeddings.npy
+
+# run outputs
+benchmark*.csv
 scores*.csv

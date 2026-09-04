@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "qsar-hit-screen"
 version = "0.1.0"
-description = "Ligand-based hit classification and library screening for SLC-family transport inhibitors"
+description = "Hit classification for SLC-family transport inhibitors: scaffold-split benchmarking of ligand, structural, and learned features"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -19,13 +19,18 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-extra = ["xgboost>=2.0"]
-dev = ["pytest>=7.4", "matplotlib>=3.7"]
+# gradient boosting for the third classifier in the benchmark
+boost = ["xgboost>=2.0"]
+# frozen CheMeleon embeddings (needs the Zenodo checkpoint, see README)
+embeddings = ["chemprop>=2.2", "torch>=2.0"]
+# interaction fingerprints from docked poses
+structural = ["prolif>=2.0", "MDAnalysis>=2.7"]
+dev = ["pytest>=7.4"]
+all = ["xgboost>=2.0", "chemprop>=2.2", "torch>=2.0", "prolif>=2.0",
+       "MDAnalysis>=2.7", "pytest>=7.4"]
 
 [project.scripts]
 qsar-score = "qsar_screen.cli:cmd_score"
-qsar-screen = "qsar_screen.cli:cmd_screen"
-qsar-reward = "qsar_screen.cli:cmd_reward"
 
 [tool.setuptools.packages.find]
 where = ["src"]
