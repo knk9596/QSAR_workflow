@@ -1,12 +1,12 @@
 # qsar-hit-screen
 
-QSAR for NBCn2 inhibitors. Benchmarks three
+QSAR modeling for NBCn2 inhibitors. Benchmarks three
 feature representations: ligand-based descriptors, protein-ligand interaction
 fingerprints from docked poses, and a frozen molecular foundation-model
 embedding, under one scaffold-split protocol.
 
 Trained on a 163-compound transport assay (normalised inhibition, pH-based
-readout) from an iterative structure-based campaign against a single target
+fluorescent readout) from an iterative structure-based campaign against a single target
 conformation. 163
 compounds can be split across 111 Murcko scaffolds.
 
@@ -35,8 +35,6 @@ score_smiles(["O=C(NCCCn1cnc2ccccc21)c1cc(-c2ccccc2)[nH]n1"])
 qsar-score --input molecules.smi           # score with the packaged model
 ```
 
-No dataset is needed to try the code — `scripts/make_example_data.py`
-enumerates a synthetic congeneric series and the whole pipeline runs on it:
 
 ```bash
 python scripts/make_example_data.py
@@ -63,9 +61,6 @@ through for grouping.
 
 ```bash
 python scripts/train.py --data path/to/your_assay.csv
-#   your_assay.csv: 166 rows -> 163 after QC
-#     columns used: id=ID, smiles=smiles, activity=avg_inhibition
-#     dropped 3 readings above the 100% ceiling (assay artefacts, not inactives)
 ```
 
 **The raw export is not the modelling set**, and the QC is not optional:
@@ -100,7 +95,7 @@ python scripts/generate_embeddings.py --data assay.csv \
 
 # full 6 x 3 grid
 python scripts/benchmark.py --data assay.csv --smiles-col smiles \
-    --prolif-csv prolif.csv --prolif-aliases cmpd29v=cmpd29 \
+    --prolif-csv prolif.csv \
     --chemeleon-npy models/emb.npy --out benchmark.csv
 ```
 
