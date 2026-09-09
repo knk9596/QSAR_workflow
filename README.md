@@ -47,6 +47,48 @@ python scripts/train.py     --data data/example/assay_example.csv
 python scripts/benchmark.py --data data/example/assay_example.csv --out benchmark.csv
 ```
 
+To run it on a real assay table, see **Input format** below — the columns are
+auto-detected, so `--data your_file.csv` is usually the whole command.
+
+## Input format
+
+`load_assay` reads a raw assay export and returns the QC'd modelling set. It
+auto-detects the columns, so no flags are needed for a typical plate export:
+
+| role | column names recognised (first match wins) |
+|---|---|
+| structure | `smiles_canon`, `smiles`, `SMILES`, `canonical_smiles` |
+| activity | `activity_remaining`, `avg_inhibition`, `activity`, `pct_activity_remaining` |
+| identifier | `ID`, `id`, `compound`, `compound_id`, `name` |
+
+Extra columns are ignored, except `notes`/`series`/`batch`, which are carried
+through for grouping.
+
+```bash
+python scripts/train.py --data path/to/your_assay.csv
+#   your_assay.csv: 166 rows -> 163 after QC
+#     columns used: id=ID, smiles=smiles, activity=avg_inhibition
+#     dropped 3 readings above the 100% ceiling (assay artefacts, not inactives)
+```
+
+**The raw export is not the modelling set**, and the QC is not optional:
+
+- **Readings above the vehicle-control ceiling (100%) are dropped, not
+  clipped.** A compound reading 105% activity remaining is a plate artefact,
+  not a super-inactive compound; clipping it to 100 would keep a fabricated
+  value in the training set. `--no-qc` disables this, and shouldn't be used.
+- **SMILES are canonicalised before any structural join or de-duplication**,
+  otherwise the same molecule written two ways survives as two rows and can
+  land on both sides of a scaffold split.
+- **Identifier corrections are not done here.** Fix names in the source CSV
+  before running; the loader never rewrites an id, so what you read back is
+  what you passed in. (`--prolif-aliases` is a separate thing — it reconciles
+  the *pose file's* names, which are generated and not hand-edited.)
+
+Activity direction: **lower means more potent** (vehicle control = 100% activity
+remaining), and `active = activity_remaining < 65`. See the threshold note under
+Method.
+
 ## Feature representations
 
 | Block | Source | Needs |
@@ -112,6 +154,7 @@ unmeasured rather than known-bad.
 
 ```
 src/qsar_screen/
+  data.py         raw-assay loading + QC (column detection, ceiling, canonicalisation)
   features.py     fingerprints, descriptors, Murcko scaffolds, similarity
   structural.py   ProLIF interaction fingerprints, pose alignment
   embeddings.py   frozen CheMeleon encoder
@@ -120,7 +163,7 @@ src/qsar_screen/
   evaluate.py     scaffold CV, metrics, enrichment, permutation test
   cli.py          qsar-score
 scripts/          train, benchmark, generate_embeddings, make_example_data
-tests/            35 tests (5 more run when torch is installed)
+tests/            42 tests (5 more run when torch is installed)
 models/           packaged classifier (332 KB)
 results/          reference benchmark table
 ```

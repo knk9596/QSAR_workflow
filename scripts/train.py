@@ -10,21 +10,28 @@ import argparse
 
 import pandas as pd
 
+from qsar_screen.data import load_assay
 from qsar_screen.model import ACTIVITY_THRESHOLD, save_scorer, train
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--data", required=True)
-    ap.add_argument("--smiles-col", default="smiles")
-    ap.add_argument("--activity-col", default="activity_remaining")
+    ap.add_argument("--smiles-col", default=None,
+                    help="auto-detected if omitted")
+    ap.add_argument("--activity-col", default=None,
+                    help="auto-detected if omitted (accepts avg_inhibition)")
+    ap.add_argument("--id-col", default=None)
+    ap.add_argument("--no-qc", action="store_true",
+                    help="keep readings above the 100%% ceiling (not advised)")
     ap.add_argument("--threshold", type=float, default=ACTIVITY_THRESHOLD)
     ap.add_argument("--model-dir", default=None)
     args = ap.parse_args()
 
-    frame = pd.read_csv(args.data)
-    scorer = train(frame[args.smiles_col].tolist(),
-                   frame[args.activity_col].to_numpy(),
+    frame = load_assay(args.data, args.smiles_col, args.activity_col,
+                       args.id_col, ceiling=None if args.no_qc else 100.0)
+    scorer = train(frame["smiles"].tolist(),
+                   frame["activity_remaining"].to_numpy(),
                    threshold=args.threshold)
     path = save_scorer(scorer) if args.model_dir is None else save_scorer(
         scorer, args.model_dir)

@@ -14,6 +14,7 @@ from qsar_screen.evaluate import (
     classification_metrics, enrichment_factor, permutation_test, scaffold_cv,
 )
 from qsar_screen.features import ecfp4, maccs, murcko_scaffolds, rdkit_descriptors
+from qsar_screen.data import load_assay
 from qsar_screen.model import ACTIVITY_THRESHOLD
 
 # whether a block is a bit vector (variance filter only) or dense (scale + prune)
@@ -72,8 +73,13 @@ def feature_blocks(smiles, ids=None, prolif_csv=None, chemeleon_ckpt=None,
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--data", required=True)
-    ap.add_argument("--smiles-col", default="smiles")
-    ap.add_argument("--activity-col", default="activity_remaining")
+    ap.add_argument("--smiles-col", default=None,
+                    help="auto-detected if omitted")
+    ap.add_argument("--activity-col", default=None,
+                    help="auto-detected if omitted (accepts avg_inhibition)")
+    ap.add_argument("--id-col", default=None)
+    ap.add_argument("--no-qc", action="store_true",
+                    help="keep readings above the 100%% ceiling (not advised)")
     ap.add_argument("--threshold", type=float, default=ACTIVITY_THRESHOLD)
     ap.add_argument("--models", nargs="+", default=["rf", "svm", "xgb"],
                     choices=["rf", "svm", "xgb"])
@@ -90,9 +96,10 @@ def main() -> int:
     ap.add_argument("--out", default="benchmark.csv")
     args = ap.parse_args()
 
-    frame = pd.read_csv(args.data)
-    smiles = frame[args.smiles_col].tolist()
-    y = (frame[args.activity_col].to_numpy(float) < args.threshold).astype(int)
+    frame = load_assay(args.data, args.smiles_col, args.activity_col,
+                       args.id_col, ceiling=None if args.no_qc else 100.0)
+    smiles = frame["smiles"].tolist()
+    y = (frame["activity_remaining"].to_numpy(float) < args.threshold).astype(int)
     id_col = next((c for c in frame.columns if c.lower() in ("id", "compound",
                    "compound_id", "name")), None)
     ids = frame[id_col] if id_col else None
