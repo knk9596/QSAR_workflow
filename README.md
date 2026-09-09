@@ -1,17 +1,14 @@
 # qsar-hit-screen
 
-Hit classification for SLC-family transport inhibitors. Benchmarks three
-feature representations — ligand-based descriptors, protein-ligand interaction
+QSAR for NBCn2 inhibitors. Benchmarks three
+feature representations: ligand-based descriptors, protein-ligand interaction
 fingerprints from docked poses, and a frozen molecular foundation-model
-embedding — under one scaffold-split protocol, and packages the resulting
-classifier.
+embedding, under one scaffold-split protocol.
 
 Trained on a 163-compound transport assay (normalised inhibition, pH-based
 readout) from an iterative structure-based campaign against a single target
-conformation. The interesting part of the problem is not the classifier: 163
-compounds across 111 Murcko scaffolds is small enough that most apparent
-performance differences are noise, so the pipeline is built to measure that
-honestly rather than to report a winner.
+conformation. 163
+compounds can be split across 111 Murcko scaffolds.
 
 ## Install
 
