@@ -74,16 +74,9 @@ python scripts/train.py --data path/to/your_assay.csv
 **The raw export is not the modelling set**, and the QC is not optional:
 
 - **Readings above the vehicle-control ceiling (100%) are dropped, not
-  clipped.** A compound reading 105% activity remaining is a plate artefact,
-  not a super-inactive compound; clipping it to 100 would keep a fabricated
-  value in the training set. `--no-qc` disables this, and shouldn't be used.
+  clipped.** 
 - **SMILES are canonicalised before any structural join or de-duplication**,
-  otherwise the same molecule written two ways survives as two rows and can
-  land on both sides of a scaffold split.
-- **Identifier corrections are not done here.** Fix names in the source CSV
-  before running; the loader never rewrites an id, so what you read back is
-  what you passed in. (`--prolif-aliases` is a separate thing — it reconciles
-  the *pose file's* names, which are generated and not hand-edited.)
+
 
 Activity direction: **lower means more potent** (vehicle control = 100% activity
 remaining), and `active = activity_remaining < 65`. See the threshold note under
@@ -94,12 +87,10 @@ Method.
 | Block | Source | Needs |
 |---|---|---|
 | ECFP4 / FCFP4 / MACCS | SMILES | rdkit |
-| RDKit descriptors (217, no pre-selection) | SMILES | rdkit |
+| RDKit descriptors| SMILES | rdkit |
 | Interaction fingerprint | docked pose + receptor, via ProLIF | `[structural]` |
 | CheMeleon embedding (2048-d) | frozen pretrained MPNN encoder | `[embeddings]` |
 
-The structural and learned blocks are optional because they need inputs the
-SMILES-only path does not: a docked pose per molecule, or a 35 MB checkpoint.
 
 ```bash
 # interaction fingerprints from a best-pose SDF (one row per compound)
@@ -116,10 +107,6 @@ python scripts/benchmark.py --data assay.csv --smiles-col smiles \
     --chemeleon-npy models/emb.npy --out benchmark.csv
 ```
 
-`--prolif-aliases` exists because pose files are generated once and then
-outlive later ID corrections. Without a map a renamed compound is dropped
-silently, which shifts both the sample size and the metric — worth a flag
-rather than a surprise.
 
 ## Method
 
@@ -129,13 +116,7 @@ boosting as benchmark comparators. Bit vectors get variance filtering only;
 dense blocks are standardised and correlation-pruned at |r| > 0.95, both fitted
 per fold.
 
-**Validation.** `StratifiedGroupKFold` grouped on Bemis-Murcko scaffold, so
-analogue series never straddle a split. This matters here: a t-SNE on ECFP4
-Tanimoto distances shows the set is organised by synthetic batch (silhouette
-+0.075) far more strongly than by activity (+0.009), so a random split places
-near-duplicates on both sides. An earlier random-split configuration reported
-ROC 0.755; the honest value for the same features is 0.736, and the gap traced
-to descriptor selection performed once on the full dataset rather than per fold.
+**Validation.** `StratifiedGroupKFold` grouped on Bemis-Murcko scaffold.
 
 **Significance.** 200-permutation y-scrambling with the whole cross-validation
 refitted per permutation, so the null absorbs pipeline optimism. Pairwise
@@ -143,10 +124,7 @@ bootstrap over out-of-fold predictions for model comparisons.
 
 **Applicability domain.** Max ECFP4 Tanimoto to the training set, reported as
 graded tiers (`in_domain` ≥ 0.50, `edge` ≥ 0.30, `out_of_domain` below) rather
-than a hard gate. Binning held-out performance by similarity could not identify
-a defensible cutoff — nearly all actives sit at high similarity, so competence
-is only *demonstrable* near the training scaffolds and everything below is
-unmeasured rather than known-bad.
+than a hard gate. 
 
 
 
