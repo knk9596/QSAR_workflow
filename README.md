@@ -99,7 +99,7 @@ python scripts/benchmark.py --data assay.csv --smiles-col smiles \
     --chemeleon-npy models/emb.npy --out benchmark.csv
 ```
 
-## Transfer learning vs fine-tuning (CheMeleon)
+## Fine-tuning of pretrained descriptor-based foundation models (CheMeleon)
 CheMeleon: https://github.com/JacksonBurns/chemeleon
 
 A pretrained encoder can be used at three levels:
