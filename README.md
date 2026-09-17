@@ -99,6 +99,34 @@ python scripts/benchmark.py --data assay.csv --smiles-col smiles \
     --chemeleon-npy models/emb.npy --out benchmark.csv
 ```
 
+## Transfer learning vs fine-tuning (CheMeleon)
+CheMeleon: https://github.com/JacksonBurns/chemeleon
+
+A pretrained encoder can be used at three levels of "how much do I train?", which
+this repo runs side by side so the choice is measured rather than assumed:
+
+1. **Frozen encoder + shallow head** — one forward pass gives a 2048-d embedding,
+   then a random forest / SVM is trained on it. No gradient reaches the network at
+   all; there is no epoch to choose.
+2. **Frozen encoder + trainable FFN head** — the encoder is frozen, but a neural
+   feed-forward head is trained on the embedding by gradient descent. Only the
+   head's weights (~0.6M) move; the pretrained representation is untouched.
+3. **Full fine-tune** — encoder and head are updated end-to-end (~9.3M weights),
+   the standard "fine-tune a foundation model" recipe.
+
+The comparison is controlled — identical `StratifiedGroupKFold` scaffold folds,
+identical labels, same embedding geometry, same metric across all three:
+
+```bash
+# all three conditions side by side: full fine-tune / frozen+FFN head / frozen+RF
+python scripts/finetune_comparison.py --data assay.csv \
+    --ckpt models/chemeleon_mp.pt --epochs 50 --out results/finetune_comparison.csv
+
+# train-vs-held-out PR-AUC per epoch, for the two GRADIENT-trained conditions
+# (full fine-tune and frozen+FFN) — the overfitting made visible
+python scripts/learning_curve.py --data assay.csv \
+    --ckpt models/chemeleon_mp.pt --epochs 50 --out results/learning_curve.csv
+
 
 ## Method
 
