@@ -141,10 +141,6 @@ per fold.
 refitted per permutation, so the null absorbs pipeline optimism. Pairwise
 bootstrap over out-of-fold predictions for model comparisons.
 
-**Applicability domain.** Max ECFP4 Tanimoto to the training set, reported as
-graded tiers (`in_domain` ≥ 0.50, `edge` ≥ 0.30, `out_of_domain` below) rather
-than a hard gate. 
-
 
 
 ## Layout
