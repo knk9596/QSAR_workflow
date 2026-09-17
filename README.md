@@ -102,8 +102,7 @@ python scripts/benchmark.py --data assay.csv --smiles-col smiles \
 ## Transfer learning vs fine-tuning (CheMeleon)
 CheMeleon: https://github.com/JacksonBurns/chemeleon
 
-A pretrained encoder can be used at three levels of "how much do I train?", which
-this repo runs side by side so the choice is measured rather than assumed:
+A pretrained encoder can be used at three levels:
 
 1. **Frozen encoder + shallow head** — one forward pass gives a 2048-d embedding,
    then a random forest / SVM is trained on it. No gradient reaches the network at
