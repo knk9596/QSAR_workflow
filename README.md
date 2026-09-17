@@ -126,7 +126,7 @@ python scripts/finetune_comparison.py --data assay.csv \
 python scripts/learning_curve.py --data assay.csv \
     --ckpt models/chemeleon_mp.pt --epochs 50 --out results/learning_curve.csv
 
-
+```
 ## Method
 
 **Model.** Random forest (500 trees, `min_samples_leaf=3`,
