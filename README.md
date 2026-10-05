@@ -1,8 +1,12 @@
-# qsar-hit-screen
+# Novel Ligand Discovery for the Bicarbonate Transporter NBCn2 Using Machine Learning, Ultra-Large Screening and Generative Design
 
-QSAR workflow for NBCn2 (`SLC4A10`) ligand discovery. Data curation, three feature
-representations benchmarked under one scaffold-disjoint protocol, and deployment to
-ultra-large library screening, generative design and structure-based triage.
+Poster | Paper | Data Repository | Code Repository
+
+Python package: `qsar-hit-screen`
+
+Data curation, three feature representations benchmarked under one scaffold-disjoint
+protocol, and deployment to ultra-large library screening, generative design and
+structure-based triage. Target: NBCn2 (`SLC4A10`).
 
 Trained on a 163-compound transport assay (normalised inhibition, pH-based fluorescent
 readout) from an iterative structure-based campaign against a single target conformation.
