@@ -1,0 +1,54 @@
+#!/bin/bash
+#BSUB -J ligprep[1-NCHUNKS]%CONCURRENCY
+#BSUB -P ACCOUNTING_CODE
+#BSUB -q QUEUE
+#BSUB -n 8
+#BSUB -R "rusage[mem=4000]"
+#BSUB -R "span[hosts=1]"
+#BSUB -W HH:MM
+#BSUB -o logs/ligprep.%J.%I.out
+#BSUB -e logs/ligprep.%J.%I.err
+#
+# Protonation and tautomer states for one chunk of candidate SMILES.
+#
+# rusage[mem] is PER CORE on LSF: 8 x 4000 MB here, not 4000 MB per task.
+# span[hosts=1] is required because -HOST localhost:N assumes local cores.
+
+set -euo pipefail
+
+IN="/path/to/all_candidates.smi"      # one SMILES per line
+DEST="/path/to/ligprep_out"
+PER=15000                             # molecules per chunk
+SCHRODINGER_MODULE="schrodinger-module-name"
+SCRATCH="/path/to/large_scratch"
+JOBDB="/path/to/persistent/jobdb"     # not an auto-purged area
+
+module purge
+module load "$SCHRODINGER_MODULE"
+
+# Site module files often pin these into a small, quota-bound filesystem.
+# Override AFTER the module load -- a value set in shell startup is clobbered
+# by the next module load. Verify by checking which directory actually grows.
+export SCHRODINGER_TMPDIR="$SCRATCH/$LSB_JOBINDEX"
+export SCHRODINGER_JOBDB2="$JOBDB"
+mkdir -p "$SCHRODINGER_TMPDIR" "$SCHRODINGER_JOBDB2"
+
+i=$LSB_JOBINDEX
+W="$DEST/$(printf 'chunk%04d' "$i")"
+mkdir -p "$W"; cd "$W"
+[ -s out.smi ] && { echo "chunk $i already done"; exit 0; }
+
+awk -v a=$(( (i - 1) * PER + 1 )) -v b=$(( i * PER )) \
+    'NR >= a && NR <= b' "$IN" > in.smi
+[ -s in.smi ] || { echo "nothing to do"; exit 0; }
+
+# -epikx selects Epik ionisation and tautomerisation, which is what applies
+# pH 7.4. The bare default neutralises only and has no pH model at all.
+ligprep -ismi in.smi -omae out.maegz \
+  -NJOBS 8 -HOST "localhost:8" -WAIT -epikx > ligprep.log 2>&1
+
+# out.smi doubles as the completion marker: it is written only after LigPrep
+# returns, whereas out.maegz exists while it is still being written. Gate the
+# next stage on this file, never on out.maegz.
+"$SCHRODINGER/utilities/structconvert" out.maegz out.smi
+echo "chunk $i: $(wc -l < in.smi) inputs, $(wc -l < out.smi) states"

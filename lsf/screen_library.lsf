@@ -1,0 +1,32 @@
+#!/bin/bash
+#BSUB -J screen[1-NSHARDS]%CONCURRENCY
+#BSUB -P ACCOUNTING_CODE
+#BSUB -q QUEUE
+#BSUB -n 1
+#BSUB -R "rusage[mem=8000]"
+#BSUB -W HH:MM
+#BSUB -o logs/screen.%J.%I.out
+#BSUB -e logs/screen.%J.%I.err
+#
+# Score one shard of a sharded library with the packaged model.
+# Featurisation usually dominates runtime, not inference: measure the
+# per-molecule cost on one shard and multiply before committing to the array.
+
+set -euo pipefail
+
+SHARDS="/path/to/shards"        # shard_0001.smi ... shard_NNNN.smi
+OUT="/path/to/scores"
+MODEL="/path/to/model_dir"      # omit --model-dir to use the packaged scorer
+
+i=$LSB_JOBINDEX
+IN=$(printf  "%s/shard_%04d.smi"  "$SHARDS" "$i")
+DST=$(printf "%s/scores_%04d.csv" "$OUT"    "$i")
+
+mkdir -p "$OUT"
+[ -s "$DST" ] && { echo "$DST already present, skipping"; exit 0; }
+[ -s "$IN" ]  || { echo "missing input shard: $IN"; exit 1; }
+
+qsar-score --input "$IN" --out "$DST.part" --model-dir "$MODEL"
+
+# Atomic publish: a killed task leaves no file that looks complete.
+mv "$DST.part" "$DST"

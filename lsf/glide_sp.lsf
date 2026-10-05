@@ -1,0 +1,63 @@
+#!/bin/bash
+#BSUB -J sp[1-NCHUNKS]%CONCURRENCY
+#BSUB -P ACCOUNTING_CODE
+#BSUB -q QUEUE
+#BSUB -n 8
+#BSUB -R "rusage[mem=4000]"
+#BSUB -R "span[hosts=1]"
+#BSUB -W HH:MM
+#BSUB -o logs/sp.%J.%I.out
+#BSUB -e logs/sp.%J.%I.err
+#
+# Precise docking over the fraction surviving the fast pass.
+#
+# Input is re-extracted from the ORIGINAL prepared states, not from the fast
+# pass's poses: the precise pass should re-dock the prepared conformer rather
+# than refine a pose produced by reduced sampling.
+#
+# Collapse states to the best per parent compound BEFORE taking the top
+# fraction (see lsf/README.md), then re-chunk the survivors for this array.
+
+set -euo pipefail
+
+SRC="/path/to/survivors"          # chunkNNNN/survivors.maegz
+DEST="/path/to/sp_out"
+GRID="/path/to/receptor_grid.zip"
+SCHRODINGER_MODULE="schrodinger-module-name"
+SCRATCH="/path/to/large_scratch"
+JOBDB="/path/to/persistent/jobdb"
+
+module purge
+module load "$SCHRODINGER_MODULE"
+export SCHRODINGER_TMPDIR="$SCRATCH/$LSB_JOBINDEX"
+export SCHRODINGER_JOBDB2="$JOBDB"
+mkdir -p "$SCHRODINGER_TMPDIR" "$SCHRODINGER_JOBDB2"
+
+i=$LSB_JOBINDEX
+T=$(printf 'chunk%04d' "$i")
+LIG="$SRC/$T/survivors.maegz"
+W="$DEST/$T"
+
+[ -s "$LIG" ] || { echo "$T: no survivors file -- skipping"; exit 0; }
+mkdir -p "$W"; cd "$W"
+[ -s scores.csv ] && { echo "$T already docked"; exit 0; }
+
+cat > dock.in <<INP
+FORCEFIELD     OPLS_2005
+GRIDFILE       $GRID
+LIGANDFILE     $LIG
+PRECISION      SP
+POSE_OUTTYPE   poseviewer
+POSES_PER_LIG  1
+INP
+
+# poseviewer writes the receptor alongside the poses, which is what an
+# interaction diagram needs. The fast pass uses ligandlib instead, where only
+# the scores are kept and repeating the receptor per chunk is wasted space.
+setsid "$SCHRODINGER/glide" dock.in \
+  -OVERWRITE -NJOBS 8 -HOST "localhost:8" -WAIT -LOCAL -SUBLOCAL \
+  </dev/null > glide.log 2>&1
+
+"$SCHRODINGER/utilities/proplister" -c \
+  -p s_m_title -p r_i_docking_score -p r_i_glide_gscore -p r_i_glide_emodel \
+  dock_pv.maegz > scores.csv
