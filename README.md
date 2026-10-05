@@ -213,9 +213,7 @@ tests/             unit tests, runnable without optional extras
 ## Acknowledgements
 
 The LSF submission templates, the workflow figure and this README were drafted with
-assistance from [Claude](https://claude.ai) (Anthropic). All scientific decisions,
-assay data and results are the authors'.
-
+assistance from [Claude](https://claude.ai) (Anthropic). 
 ## Citation and licence
 
 Code is released under the MIT licence. The curated assay dataset and campaign results
