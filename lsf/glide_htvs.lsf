@@ -1,0 +1,74 @@
+#!/bin/bash
+#BSUB -J htvs[1-NCHUNKS]%CONCURRENCY
+#BSUB -P ACCOUNTING_CODE
+#BSUB -q QUEUE
+#BSUB -n 8
+#BSUB -R "rusage[mem=4000]"
+#BSUB -R "span[hosts=1]"
+#BSUB -W HH:MM
+#BSUB -o logs/htvs.%J.%I.out
+#BSUB -e logs/htvs.%J.%I.err
+#
+# Fast docking pass over every prepared state of one chunk.
+# Benchmark one chunk first: throughput varies by an order of magnitude with
+# pocket size, box dimensions and ligand flexibility.
+
+set -euo pipefail
+
+SRC="/path/to/ligprep_out"
+DEST="/path/to/htvs_out"
+GRID="/path/to/receptor_grid.zip"
+SCHRODINGER_MODULE="schrodinger-module-name"
+SCRATCH="/path/to/large_scratch"
+JOBDB="/path/to/persistent/jobdb"
+
+module purge
+module load "$SCHRODINGER_MODULE"
+export SCHRODINGER_TMPDIR="$SCRATCH/$LSB_JOBINDEX"
+export SCHRODINGER_JOBDB2="$JOBDB"
+mkdir -p "$SCHRODINGER_TMPDIR" "$SCHRODINGER_JOBDB2"
+
+i=$LSB_JOBINDEX
+T=$(printf 'chunk%04d' "$i")
+LIG="$SRC/$T/out.maegz"
+SMI="$SRC/$T/out.smi"
+W="$DEST/$T"
+
+# Gate on the previous stage's completion marker, not on the .maegz, which
+# exists while still being written.
+if [ ! -s "$LIG" ] || [ ! -s "$SMI" ]; then
+  echo "$T: ligand preparation not finished -- skipping"
+  exit 0
+fi
+
+mkdir -p "$W"; cd "$W"
+[ -s scores.csv ] && { echo "$T already docked"; exit 0; }
+
+cat > dock.in <<INP
+FORCEFIELD     OPLS_2005
+GRIDFILE       $GRID
+LIGANDFILE     $LIG
+PRECISION      HTVS
+POSE_OUTTYPE   ligandlib
+POSES_PER_LIG  1
+INP
+
+# POSES_PER_LIG is the per-ligand pose count (its default is already 1).
+# NREPORT is a JOB-WIDE cap: setting NREPORT 1 reports one pose for the entire
+# run, which looks exactly like a broken receptor grid.
+#
+# setsid with stdin from /dev/null stops job-control daemons inheriting the
+# batch job's stdio; otherwise the scheduler never sees EOF and will not reap
+# the task, holding its cores long after the work has finished.
+#
+# -LOCAL -SUBLOCAL keeps job and subjob files in the working directory instead
+# of a temp area that may be quota-bound. When that area fills, subjob inputs
+# are written truncated and the subjobs die reporting an unreadable file rather
+# than a disk error.
+setsid "$SCHRODINGER/glide" dock.in \
+  -OVERWRITE -NJOBS 8 -HOST "localhost:8" -WAIT -LOCAL -SUBLOCAL \
+  </dev/null > glide.log 2>&1
+
+"$SCHRODINGER/utilities/proplister" -c \
+  -p s_m_title -p r_i_docking_score -p r_i_glide_gscore \
+  dock_lib.maegz > scores.csv

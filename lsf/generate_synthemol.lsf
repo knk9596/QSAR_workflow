@@ -1,0 +1,57 @@
+#!/bin/bash
+#BSUB -J generate[1-NSEEDS]
+#BSUB -P ACCOUNTING_CODE
+#BSUB -q QUEUE
+#BSUB -n 8
+#BSUB -R "rusage[mem=4000]"
+#BSUB -R "span[hosts=1]"
+#BSUB -W HH:MM
+#BSUB -o logs/generate.%J.%I.out
+#BSUB -e logs/generate.%J.%I.err
+#
+# Synthesis-aware generative search over catalogue building blocks, rewarded by
+# the trained potency and solubility models.
+#   https://github.com/swansonk14/SyntheMol
+#
+# One task per RNG seed. Independent seeds are the only way to tell whether the
+# search concentrated on a privileged region or simply wandered: compare the
+# overlap between their outputs.
+
+set -euo pipefail
+
+CONDA_MODULE="conda-module-name"
+SYNTHEMOL_ENV="synthemol-env-name"
+BLOCKS="/path/to/scored_building_blocks.csv"
+RXN_MAP="/path/to/reaction_to_building_blocks.pkl"
+POTENCY_MODEL="/path/to/potency.pkl"
+SOLUBILITY_MODEL="/path/to/solubility.pkl"
+RUNS="/path/to/runs"
+N_ROLLOUT=10000
+ACTIVITY_CUT=0.5
+LOGS_CUT=-4
+
+module purge
+module load "$CONDA_MODULE"
+unset PYTHONPATH PYTHONHOME
+source activate "$SYNTHEMOL_ENV"
+
+SEED=$LSB_JOBINDEX
+RUN="$RUNS/seed$SEED"
+[ -s "$RUN/molecules.csv" ] && { echo "seed $SEED already done"; exit 0; }
+
+synthemol \
+  --search_type              rl \
+  --building_blocks          "$BLOCKS" \
+  --reaction_to_building_blocks_path "$RXN_MAP" \
+  --score_types              random_forest random_forest \
+  --score_model_paths        "$POTENCY_MODEL" "$SOLUBILITY_MODEL" \
+  --score_fingerprint_types  rdkit rdkit \
+  --score_names              activity log_solubility \
+  --score_signs              1 1 \
+  --success_thresholds       ">= $ACTIVITY_CUT" ">= $LOGS_CUT" \
+  --rl_prediction_types      classification regression \
+  --rl_model_type            mlp \
+  --max_reactions            1 \
+  --n_rollout                "$N_ROLLOUT" \
+  --rng_seed                 "$SEED" \
+  --save_dir                 "$RUN"

@@ -12,9 +12,9 @@ The 163 compounds span 111 Murcko scaffolds.
 
 ![workflow](figure/workflow.svg)
 
-Stages 1–3 are implemented in this package. Stages 4–5 are campaign infrastructure run
-on an LSF cluster against licensed third-party tools, and are described here for
-context rather than packaged.
+Stages 1–3 are implemented in this package. Stages 4–5 run on an LSF cluster against
+licensed third-party tools; `lsf/` holds submission templates for them, with
+site-specific paths, queues and cut-offs left as placeholders.
 
 ## Contents
 
@@ -95,7 +95,7 @@ python scripts/learning_curve.py --data data/example/assay_example.csv
 
 ## 4 · Application
 
-Not packaged in this repository.
+Submission templates in `lsf/`; paths and cut-offs are placeholders.
 
 - **Ultra-large library screening** — the trained potency and solubility models are
   applied to a 3-billion-compound lead-like subset of
@@ -106,15 +106,29 @@ Not packaged in this repository.
   WuXi GalaXi building blocks under validated reaction templates, using the trained
   models as the reward.
 
-## 5 · Structure-based triage
+```bash
+bsub < lsf/screen_library.lsf        # one array task per library shard
+bsub < lsf/generate_synthemol.lsf    # one array task per RNG seed
+```
 
-Not packaged in this repository.
+## 5 · Structure-based triage
 
 Docking enters last and for one specific reason: it rejects geometrically unreasonable
 poses, which is information no ligand-based model contains.
 
 Candidates are prepared into protonation and tautomer states at pH 7.4, docked with
 Glide HTVS, and the top fraction re-docked with Glide SP.
+
+Ligand preparation expands one compound into several states, and the docking engine
+treats each as an independent ligand. Collapse to the best state per parent compound
+before taking the top fraction, or compounds producing more states are
+over-represented.
+
+```bash
+bsub < lsf/ligprep.lsf
+bsub < lsf/glide_htvs.lsf
+bsub < lsf/glide_sp.lsf
+```
 
 ## Install
 
@@ -183,6 +197,12 @@ scripts/
   generate_embeddings.py   precompute CheMeleon embeddings
   finetune_comparison.py   frozen vs fine-tuned encoder
   learning_curve.py        performance against training-set size
+lsf/
+  screen_library.lsf       score a sharded library, one task per shard
+  generate_synthemol.lsf   generative search, one task per seed
+  ligprep.lsf              protonation and tautomer states
+  glide_htvs.lsf           fast docking pass
+  glide_sp.lsf             precise docking pass
 figure/            workflow figure
 data/example/      example assay table
 models/            packaged scorer
