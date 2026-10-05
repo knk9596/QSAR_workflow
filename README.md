@@ -1,4 +1,4 @@
-# Novel Ligand Discovery for the Bicarbonate Transporter NBCn2 Using Machine Learning, Ultra-Large Screening and Generative Design
+# Novel Ligand Discovery for the Bicarbonate Transporter NBCn2 By Ultra-Large Library Screening and Generative Molecular Design
 
 
 Data curation, three feature representations benchmarked under one scaffold-disjoint
