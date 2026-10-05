@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="680" height="700" viewBox="0 0 680 700" role="img" aria-labelledby="t d">
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="670" viewBox="0 0 680 670" role="img" aria-labelledby="t d">
 <title id="t">Five-stage QSAR discovery workflow</title>
-<desc id="d">Stage one curates raw inhibition data by normalisation, batch correction and artifact removal. Stage two builds four feature representations from SMILES or docked poses. Stage three trains a potency classifier and a solubility regressor under scaffold-split cross-validation. Stage four applies them to a three-billion-compound lead-like library and to SyntheMol generative design. Stage five triages candidates by ligand preparation, Glide HTVS and Glide SP, ending in candidate selection whose assay results return to stage one.</desc>
+<desc id="d">Stage one curates raw inhibition data by normalisation, batch correction and artifact removal. Stage two builds four feature representations from SMILES or docked poses. Stage three trains a potency classifier and a solubility regressor under scaffold-split cross-validation. Stage four applies them to a three-billion-compound lead-like library and to SyntheMol generative design. Stage five triages candidates by ligand preparation, Glide HTVS and Glide SP, ending in candidate selection.</desc>
 <style>
   .box{fill:#ffffff;stroke:#c7d3d1;stroke-width:1}
   .boxa{fill:#e1f5ee;stroke:#0f6e56;stroke-width:1}
@@ -60,6 +60,4 @@
 
 <rect class="box" x="185" y="596" width="310" height="44" rx="4"/><text class="t" x="340" y="615" text-anchor="middle">Candidate selection</text><text class="s" x="340" y="631" text-anchor="middle">purchase and assay</text>
 
-<path d="M495 618 L638 618 L638 34 L340 34 L340 46" stroke="#c7d3d1" stroke-width="1.2" stroke-dasharray="5 4" fill="none" marker-end="url(#p)"/>
-<text class="lab" x="508" y="665">dashed return path: new results re-enter curation</text>
 </svg>
