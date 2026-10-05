@@ -1,8 +1,5 @@
 # Novel Ligand Discovery for the Bicarbonate Transporter NBCn2 Using Machine Learning, Ultra-Large Screening and Generative Design
 
-Poster | Paper | Data Repository | Code Repository
-
-Python package: `qsar-hit-screen`
 
 Data curation, three feature representations benchmarked under one scaffold-disjoint
 protocol, and deployment to ultra-large library screening, generative design and
