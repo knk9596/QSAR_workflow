@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="700" viewBox="0 0 680 700" role="img" aria-labelledby="t d">
+<title id="t">Five-stage QSAR discovery workflow</title>
+<desc id="d">Stage one curates raw inhibition data by normalisation, batch correction and artifact removal. Stage two builds four feature representations from SMILES or docked poses. Stage three trains a potency classifier and a solubility regressor under scaffold-split cross-validation. Stage four applies them to a three-billion-compound lead-like library and to SyntheMol generative design. Stage five triages candidates by ligand preparation, Glide HTVS and Glide SP, ending in candidate selection whose assay results return to stage one.</desc>
+<style>
+  .box{fill:#ffffff;stroke:#c7d3d1;stroke-width:1}
+  .boxa{fill:#e1f5ee;stroke:#0f6e56;stroke-width:1}
+  .dash{fill:none;stroke:#dde4e3;stroke-width:1;stroke-dasharray:4 4}
+  .t{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12.5px;font-weight:500;fill:#12201f}
+  .s{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;fill:#44605d}
+  .lab{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;fill:#6f8a87}
+  .ln{stroke:#c7d3d1;stroke-width:1.2;fill:none}
+  @media (prefers-color-scheme:dark){
+    .box{fill:#151f1e;stroke:#354946}
+    .boxa{fill:#10302a;stroke:#5dcaa5}
+    .dash{stroke:#283836}
+    .t{fill:#e4edeb}
+    .s{fill:#9fb5b2}
+    .lab{fill:#7a918e}
+    .ln{stroke:#354946}
+  }
+</style>
+<defs><marker id="p" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.4" stroke-linecap="round"/></marker></defs>
+
+<rect class="dash" x="56" y="46" width="568" height="90" rx="6"/><text class="lab" x="68" y="63">1 · data curation</text>
+<rect class="box" x="68" y="74" width="170" height="44" rx="4"/><text class="t" x="153" y="93" text-anchor="middle">Normalisation</text><text class="s" x="153" y="109" text-anchor="middle">on-plate controls</text>
+<path class="ln" d="M240 96 L253 96" marker-end="url(#p)"/>
+<rect class="box" x="255" y="74" width="170" height="44" rx="4"/><text class="t" x="340" y="93" text-anchor="middle">Batch correction</text><text class="s" x="340" y="109" text-anchor="middle">across rounds</text>
+<path class="ln" d="M427 96 L440 96" marker-end="url(#p)"/>
+<rect class="box" x="442" y="74" width="170" height="44" rx="4"/><text class="t" x="527" y="93" text-anchor="middle">Artifact removal</text><text class="s" x="527" y="109" text-anchor="middle">interference, QC</text>
+
+<path class="ln" d="M340 136 L340 156" marker-end="url(#p)"/>
+
+<rect class="dash" x="56" y="156" width="568" height="90" rx="6"/><text class="lab" x="68" y="173">2 · featurisation</text>
+<rect class="boxa" x="68" y="184" width="170" height="44" rx="4"/><text class="t" x="153" y="203" text-anchor="middle">Ligand descriptors</text><text class="s" x="153" y="219" text-anchor="middle">RDKit, ECFP4, MACCS</text>
+<rect class="boxa" x="255" y="184" width="170" height="44" rx="4"/><text class="t" x="340" y="203" text-anchor="middle">Graph embedding</text><text class="s" x="340" y="219" text-anchor="middle">chemprop CheMeleon</text>
+<rect class="boxa" x="442" y="184" width="170" height="44" rx="4"/><text class="t" x="527" y="203" text-anchor="middle">Interaction map</text><text class="s" x="527" y="219" text-anchor="middle">ProLIF, docked pose</text>
+
+<path class="ln" d="M340 246 L340 266" marker-end="url(#p)"/>
+
+<rect class="dash" x="56" y="266" width="568" height="90" rx="6"/><text class="lab" x="68" y="283">3 · predictive models</text>
+<rect class="boxa" x="68" y="294" width="254" height="44" rx="4"/><text class="t" x="195" y="313" text-anchor="middle">Potency classifier</text><text class="s" x="195" y="329" text-anchor="middle">PR-AUC, enrichment</text>
+<rect class="boxa" x="358" y="294" width="254" height="44" rx="4"/><text class="t" x="485" y="313" text-anchor="middle">Solubility regressor</text><text class="s" x="485" y="329" text-anchor="middle">R squared, MAE</text>
+
+<path class="ln" d="M340 356 L340 376" marker-end="url(#p)"/>
+
+<rect class="dash" x="56" y="376" width="568" height="90" rx="6"/><text class="lab" x="68" y="393">4 · application</text>
+<rect class="boxa" x="68" y="404" width="254" height="44" rx="4"/><text class="t" x="195" y="423" text-anchor="middle">Ultra-large screening</text><text class="s" x="195" y="439" text-anchor="middle">3B lead-like library</text>
+<rect class="boxa" x="358" y="404" width="254" height="44" rx="4"/><text class="t" x="485" y="423" text-anchor="middle">Generative design</text><text class="s" x="485" y="439" text-anchor="middle">SyntheMol</text>
+
+<path class="ln" d="M340 466 L340 486" marker-end="url(#p)"/>
+
+<rect class="dash" x="56" y="486" width="568" height="90" rx="6"/><text class="lab" x="68" y="503">5 · structure-based triage</text>
+<rect class="box" x="68" y="514" width="170" height="44" rx="4"/><text class="t" x="153" y="533" text-anchor="middle">Ligand prep</text><text class="s" x="153" y="549" text-anchor="middle">states at pH 7.4</text>
+<path class="ln" d="M240 536 L253 536" marker-end="url(#p)"/>
+<rect class="box" x="255" y="514" width="170" height="44" rx="4"/><text class="t" x="340" y="533" text-anchor="middle">Glide HTVS</text><text class="s" x="340" y="549" text-anchor="middle">all states</text>
+<path class="ln" d="M427 536 L440 536" marker-end="url(#p)"/>
+<rect class="box" x="442" y="514" width="170" height="44" rx="4"/><text class="t" x="527" y="533" text-anchor="middle">Glide SP</text><text class="s" x="527" y="549" text-anchor="middle">top fraction</text>
+
+<path class="ln" d="M340 576 L340 596" marker-end="url(#p)"/>
+
+<rect class="box" x="185" y="596" width="310" height="44" rx="4"/><text class="t" x="340" y="615" text-anchor="middle">Candidate selection</text><text class="s" x="340" y="631" text-anchor="middle">purchase and assay</text>
+
+<path d="M495 618 L638 618 L638 34 L340 34 L340 46" stroke="#c7d3d1" stroke-width="1.2" stroke-dasharray="5 4" fill="none" marker-end="url(#p)"/>
+<text class="lab" x="508" y="665">dashed return path: new results re-enter curation</text>
+</svg>

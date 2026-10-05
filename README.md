@@ -1,14 +1,120 @@
 # qsar-hit-screen
 
-QSAR modeling for NBCn2 inhibitors. Benchmarks three
-feature representations: ligand-based descriptors, protein-ligand interaction
-fingerprints from docked poses, and a frozen molecular foundation-model
-embedding, under one scaffold-split protocol.
+QSAR workflow for NBCn2 (`SLC4A10`) ligand discovery. Data curation, three feature
+representations benchmarked under one scaffold-disjoint protocol, and deployment to
+ultra-large library screening, generative design and structure-based triage.
 
-Trained on a 163-compound transport assay (normalised inhibition, pH-based
-fluorescent readout) from an iterative structure-based campaign against a single target
-conformation. 163
-compounds can be split across 111 Murcko scaffolds.
+Trained on a 163-compound transport assay (normalised inhibition, pH-based fluorescent
+readout) from an iterative structure-based campaign against a single target conformation.
+The 163 compounds span 111 Murcko scaffolds.
+
+## Workflow overview
+
+![workflow](figure/workflow.svg)
+
+Stages 1–3 are implemented in this package. Stages 4–5 are campaign infrastructure run
+on an LSF cluster against licensed third-party tools, and are described here for
+context rather than packaged.
+
+## Contents
+
+- [1 · Data curation](#1--data-curation)
+- [2 · Featurisation](#2--featurisation)
+- [3 · Predictive models](#3--predictive-models)
+- [4 · Application](#4--application)
+- [5 · Structure-based triage](#5--structure-based-triage)
+- [Install](#install)
+- [Quick start](#quick-start)
+- [Input format](#input-format)
+- [Repository layout](#repository-layout)
+- [Citation and licence](#citation-and-licence)
+
+## 1 · Data curation
+
+`load_assay` reads a raw assay export and returns the QC'd modelling set:
+
+- **Normalisation** against on-plate controls, with the vehicle control as 100 % activity
+  remaining.
+- **Batch grouping** — `notes` / `series` / `batch` columns are carried through so assay
+  round can be used as a grouping variable.
+- **Artifact and structure QC** — invalid structures dropped, SMILES canonicalised,
+  duplicates resolved.
+
+The curated endpoint is a normalised inhibition value and a binary active call at a
+stated threshold (`ACTIVITY_THRESHOLD = 65.0`, adjustable).
+
+## 2 · Featurisation
+
+| Representation | Source | Input | Needs a pose |
+|---|---|---|---|
+| 2D descriptors | RDKit | SMILES | no |
+| ECFP4 fingerprint | RDKit | SMILES | no |
+| MACCS keys | RDKit | SMILES | no |
+| CheMeleon frozen embedding (2048-d) | [chemprop](https://github.com/chemprop/chemprop) | SMILES | no |
+| Protein-ligand interaction fingerprint | [ProLIF](https://github.com/chemosim-lab/ProLIF) | docked complex | yes |
+
+```bash
+python scripts/generate_embeddings.py --data data/example/assay_example.csv --out emb.npy
+```
+
+Interaction fingerprints are produced from docked poses with
+`qsar_screen.structural.generate_prolif_fingerprints(protein_pdb, poses_sdf, out_csv)`
+and passed to the benchmark with `--prolif-csv`.
+
+## 3 · Predictive models
+
+Potency is modelled as binary classification. Each feature set is paired with each
+model and all pairs are evaluated under the same split.
+
+| Features | Models |
+|---|---|
+| RDKit 2D descriptors | random forest |
+| ECFP4, MACCS | support vector machine |
+| CheMeleon embeddings | XGBoost |
+| ProLIF interaction fingerprints | |
+
+### Evaluation
+
+```python
+StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+groups = Murcko scaffold of each compound
+```
+
+| Task | Metrics |
+|---|---|
+| potency, classification | PR-AUC, enrichment factor (top 10 %) |
+| solubility, regression | R², MAE |
+
+A label-permutation test is available via `--permutations N` to establish the null.
+
+```bash
+python scripts/train.py      --data data/example/assay_example.csv
+python scripts/benchmark.py  --data data/example/assay_example.csv --out benchmark.csv
+python scripts/learning_curve.py --data data/example/assay_example.csv
+```
+
+## 4 · Application
+
+Not packaged in this repository.
+
+- **Ultra-large library screening** — the trained potency and solubility models are
+  applied to a 3-billion-compound lead-like subset of
+  [Enamine REAL](https://enamine.net/compound-collections/real-compounds), as an LSF
+  array job with one task per library shard.
+- **Generative design** — de novo candidates are generated with
+  [SyntheMol](https://github.com/swansonk14/SyntheMol), which composes Enamine REAL and
+  WuXi GalaXi building blocks under validated reaction templates, using the trained
+  models as the reward.
+
+## 5 · Structure-based triage
+
+Not packaged in this repository.
+
+Docking enters last and for one specific reason: it rejects geometrically unreasonable
+poses, which is information no ligand-based model contains.
+
+Candidates are prepared into protonation and tautomer states at pH 7.4, docked with
+Glide HTVS, and the top fraction re-docked with Glide SP.
 
 ## Install
 
@@ -18,9 +124,9 @@ pip install -e ".[all]"          # adds xgboost, chemprop/torch, prolif
 pytest
 ```
 
-Python ≥ 3.10. The core path needs only RDKit and scikit-learn; gradient
-boosting, embeddings, and interaction fingerprints are optional extras, and
-each is skipped cleanly when its dependency is absent.
+Python ≥ 3.10. The core path needs only RDKit and scikit-learn; gradient boosting,
+embeddings, and interaction fingerprints are optional extras, and each is skipped
+cleanly when its dependency is absent.
 
 ## Quick start
 
@@ -34,7 +140,6 @@ score_smiles(["O=C(NCCCn1cnc2ccccc21)c1cc(-c2ccccc2)[nH]n1"])
 ```bash
 qsar-score --input molecules.smi           # score with the packaged model
 ```
-
 
 ```bash
 python scripts/make_example_data.py
@@ -59,119 +164,39 @@ auto-detects the columns, so no flags are needed for a typical plate export:
 Extra columns are ignored, except `notes`/`series`/`batch`, which are carried
 through for grouping.
 
-```bash
-python scripts/train.py --data path/to/your_assay.csv
-```
-
-**The raw export is not the modelling set**, and the QC is not optional:
-
-- **Readings above the vehicle-control ceiling (100%) are dropped, not
-  clipped.** 
-- **SMILES are canonicalised before any structural join or de-duplication**,
-
-
-Activity direction: **lower means more potent** (vehicle control = 100% activity
-remaining), and `active = activity_remaining < 65`. See the threshold note under
-Method.
-
-## Feature representations
-
-| Block | Source | Needs |
-|---|---|---|
-| ECFP4 / FCFP4 / MACCS | SMILES | rdkit |
-| RDKit descriptors| SMILES | rdkit |
-| Interaction fingerprint | docked pose + receptor, via ProLIF | `[structural]` |
-| CheMeleon embedding (2048-d) | frozen pretrained MPNN encoder | `[embeddings]` |
-
-
-```bash
-# interaction fingerprints from a best-pose SDF (one row per compound)
-python -c "from qsar_screen.structural import generate_prolif_fingerprints as g; \
-           g('receptor.pdb', 'best_poses.sdf', 'prolif.csv')"
-
-# frozen embeddings, precomputed so the benchmark needs no torch
-python scripts/generate_embeddings.py --data assay.csv \
-    --ckpt models/chemeleon_mp.pt --out models/emb.npy
-
-# full 6 x 3 grid
-python scripts/benchmark.py --data assay.csv --smiles-col smiles \
-    --prolif-csv prolif.csv \
-    --chemeleon-npy models/emb.npy --out benchmark.csv
-```
-
-## Fine-tuning of pretrained descriptor-based foundation models (CheMeleon)
-CheMeleon: https://github.com/JacksonBurns/chemeleon
-
-A pretrained encoder can be used at three levels:
-
-1. **Frozen encoder + shallow head** — one forward pass gives a 2048-d embedding,
-   then a random forest / SVM is trained on it. No gradient reaches the network at
-   all; there is no epoch to choose.
-2. **Frozen encoder + trainable FFN head** — the encoder is frozen, but a neural
-   feed-forward head is trained on the embedding by gradient descent. Only the
-   head's weights (~0.6M) move; the pretrained representation is untouched.
-3. **Full fine-tune** — encoder and head are updated end-to-end (~9.3M weights),
-   the standard "fine-tune a foundation model" recipe.
-
-The comparison is controlled — identical `StratifiedGroupKFold` scaffold folds,
-identical labels, same embedding geometry, same metric across all three:
-
-```bash
-# all three conditions side by side: full fine-tune / frozen+FFN head / frozen+RF
-python scripts/finetune_comparison.py --data assay.csv \
-    --ckpt models/chemeleon_mp.pt --epochs 50 --out results/finetune_comparison.csv
-
-# train-vs-held-out PR-AUC per epoch, for the two GRADIENT-trained conditions
-# (full fine-tune and frozen+FFN) — the overfitting made visible
-python scripts/learning_curve.py --data assay.csv \
-    --ckpt models/chemeleon_mp.pt --epochs 50 --out results/learning_curve.csv
-
-```
-## Method
-
-**Model.** Random forest (500 trees, `min_samples_leaf=3`,
-`class_weight='balanced'`) as the shipped classifier, with SVM and gradient
-boosting as benchmark comparators. Bit vectors get variance filtering only;
-dense blocks are standardised and correlation-pruned at |r| > 0.95, both fitted
-per fold.
-
-**Validation.** `StratifiedGroupKFold` grouped on Bemis-Murcko scaffold.
-
-**Significance.** 200-permutation y-scrambling with the whole cross-validation
-refitted per permutation, so the null absorbs pipeline optimism. Pairwise
-bootstrap over out-of-fold predictions for model comparisons.
-
-
-
-## Layout
+## Repository layout
 
 ```
 src/qsar_screen/
-  data.py         raw-assay loading + QC (column detection, ceiling, canonicalisation)
-  features.py     fingerprints, descriptors, Murcko scaffolds, similarity
-  structural.py   ProLIF interaction fingerprints, pose alignment
-  embeddings.py   frozen CheMeleon encoder
-  transforms.py   CorrPrune (deterministic correlation pruning)
-  model.py        pipeline, training, packaging, scoring
-  evaluate.py     scaffold CV, metrics, enrichment, permutation test
-  cli.py          qsar-score
-scripts/          train, benchmark, generate_embeddings, make_example_data
-tests/            42 tests (5 more run when torch is installed)
-models/           packaged classifier (332 KB)
-results/          reference benchmark table
+  data.py          assay loading, QC, SMILES canonicalisation
+  features.py      RDKit descriptors, ECFP4, MACCS, Murcko scaffolds, NN similarity
+  embeddings.py    CheMeleon frozen-encoder embeddings
+  structural.py    ProLIF interaction fingerprints
+  transforms.py    correlation pruning
+  evaluate.py      scaffold-split CV, metrics, enrichment factor, permutation test
+  model.py         pipeline, training, scoring, applicability-domain tiers
+  cli.py           qsar-score entry point
+scripts/
+  make_example_data.py     synthetic assay in the expected input format
+  train.py                 fit and persist a scorer
+  benchmark.py             all feature x model pairs under one split
+  generate_embeddings.py   precompute CheMeleon embeddings
+  finetune_comparison.py   frozen vs fine-tuned encoder
+  learning_curve.py        performance against training-set size
+figure/            workflow figure
+data/example/      example assay table
+models/            packaged scorer
+tests/             unit tests, runnable without optional extras
 ```
 
-## Data availability
+## Citation and licence
 
-This repository ships the trained
-classifier and the full method; compound structures and activity values are
-withheld pending publication. The synthetic example dataset exists so every
-code path is runnable without them.
+Code is released under the MIT licence. The curated assay dataset and campaign results
+are released with the accompanying publication; please cite that work if you use this
+pipeline.
 
-The CheMeleon checkpoint (`chemeleon_mp.pt`, 35 MB) is third-party and not
-vendored here — download it from Zenodo record 15460715 into `models/`, or
-point `$CHEMELEON_CHECKPOINT` at it.
-
-## License
-
-MIT
+Third-party tools should be cited directly:
+[chemprop](https://github.com/chemprop/chemprop),
+[ProLIF](https://github.com/chemosim-lab/ProLIF),
+[SyntheMol](https://github.com/swansonk14/SyntheMol),
+[RDKit](https://www.rdkit.org/), and Schrödinger Glide and LigPrep.
